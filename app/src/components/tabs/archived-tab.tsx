@@ -132,6 +132,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
         <AIBoard
           layout="list"
           items={archivedSearch.missionSearch.items}
+          searchSnippets={archivedSearch.missionSearch.snippets}
           selectedId={selectedId}
           onSelect={setSelectedId}
           panelContainer={panelContainer}
