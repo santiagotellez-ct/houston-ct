@@ -130,8 +130,6 @@ export interface RoutineEditorLabels {
   sectionWhen: string
   sectionBehavior: string
   sectionRecent: string
-  timezoneLabel: string
-  accountDefault: string
   nextRun: string
   schedulePreview: string
   schedulePreviewHint: string
@@ -150,6 +148,10 @@ export interface RoutinesGridLabels {
   emptyDescription: string
   descriptionShort: string
   newRoutine: string
+  /** Accessible name for the account-wide timezone picker. */
+  timezoneLabel: string
+  /** One-line hint that the timezone applies to every routine. */
+  timezoneHint: string
 }
 
 /** RoutineRow meta. `{relative}`/`{time}`/`{n}` tokens on the dynamic entries. */
@@ -167,16 +169,6 @@ export interface RoutineRowLabels {
   resumeRoutine: string
 }
 
-/** TimezoneGate copy. */
-export interface TimezoneGateLabels {
-  title: string
-  description: string
-  timezoneLabel: string
-  detected: string
-  saving: string
-  confirm: string
-}
-
 // English default values, co-located in a sibling file to keep this one small.
 export {
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
@@ -186,5 +178,4 @@ export {
   DEFAULT_EDITOR_LABELS,
   DEFAULT_GRID_LABELS,
   DEFAULT_ROW_LABELS,
-  DEFAULT_TIMEZONE_GATE_LABELS,
 } from "./labels-default.ts"
