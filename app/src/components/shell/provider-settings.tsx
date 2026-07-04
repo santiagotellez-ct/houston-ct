@@ -1,5 +1,5 @@
 import type { HoustonEvent } from "@houston-ai/core";
-import { ConfirmDialog, Spinner } from "@houston-ai/core";
+import { ConfirmDialog } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
@@ -9,6 +9,10 @@ import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
+  loadCachedProviderStatuses,
+  saveCachedProviderStatuses,
+} from "../../lib/provider-status-cache";
+import {
   EMPTY_PROVIDER_CAPABILITIES,
   getConnectProviders,
   PROVIDERS,
@@ -16,6 +20,7 @@ import {
   providerGatewayIds,
 } from "../../lib/providers";
 import {
+  mergeGatewayStatus,
   type ProviderStatus,
   tauriProvider,
   tauriSystem,
@@ -47,8 +52,12 @@ import { useCopilotConnect } from "./use-copilot-connect";
  */
 export function ProviderSettings() {
   const { t } = useTranslation("providers");
-  const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
-  const [loading, setLoading] = useState(true);
+  // Seed from the last scan's snapshot so the cards paint instantly with
+  // their last-known connected state instead of hiding behind a spinner
+  // while the CLIs are probed. The probe below reconciles within seconds.
+  const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>(() =>
+    loadCachedProviderStatuses(),
+  );
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmSignOutFor, setConfirmSignOutFor] =
     useState<ProviderInfo | null>(null);
@@ -94,26 +103,21 @@ export function ProviderSettings() {
   const hasBaseline = useRef(false);
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
   const loadStatuses = useCallback(async () => {
-    const results = await Promise.all(
-      visibleProviders.map(async (p) => {
-        // A connect card may front several engine gateways (OpenCode's Zen + Go
-        // share one key) — probe them together so the merged card is connected
-        // when either is. `providerGatewayIds` is just `[p.id]` for everything else.
-        const status = await tauriProvider.checkMergedStatus(
-          providerGatewayIds(p),
-        );
-        // Paint each card the moment ITS probe resolves instead of blocking
-        // every card on the slowest provider — each CLI shell-out can take
-        // up to its 5s timeout, and gating the whole batch made the section
-        // feel frozen for ~6s after connect/sign-out.
-        setStatuses((prev) => ({ ...prev, [p.id]: status }));
-        return [p.id, status] as const;
-      }),
-    );
+    // ONE engine round-trip for every card. On the new engine this collapses to
+    // a single listProviders() (HOU-650); probing each card separately meant a
+    // round-trip per gateway (~a dozen) to the agent's sandbox each scan. A card
+    // may front several gateways (OpenCode's Zen + Go share one key), so we probe
+    // the union of gateway ids and merge per card below.
+    const gatewayIds = [
+      ...new Set(visibleProviders.flatMap((p) => providerGatewayIds(p))),
+    ];
+    const byId = await tauriProvider.checkAllStatuses(gatewayIds);
     const next: Record<string, ProviderStatus> = {};
-    for (const [id, status] of results) {
-      next[id] = status;
+    for (const p of visibleProviders) {
+      const merged = mergeGatewayStatus(providerGatewayIds(p), byId);
+      if (merged) next[p.id] = merged;
     }
+    setStatuses((prev) => ({ ...prev, ...next }));
     if (hasBaseline.current) {
       for (const prov of visibleProviders) {
         const prev = prevStatuses.current[prov.id];
@@ -127,7 +131,8 @@ export function ProviderSettings() {
     }
     prevStatuses.current = next;
     hasBaseline.current = true;
-    setLoading(false);
+    // Persist the confirmed scan so the NEXT visit paints instantly.
+    saveCachedProviderStatuses(next);
   }, [visibleProviders]);
 
   // Optimistically reflect an auth outcome we already know succeeded (a
@@ -408,14 +413,6 @@ export function ProviderSettings() {
     }
     return [...connected, ...disconnected];
   }, [statuses, visibleProviders]);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Spinner className="h-5 w-5" />
-      </div>
-    );
-  }
 
   return (
     <>
