@@ -1,0 +1,19 @@
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: packages/web/Dockerfile
+      args:
+        VITE_NEW_ENGINE: "1"
+        VITE_HOST_URL: "${VITE_HOST_URL:?set VITE_HOST_URL}"
+        VITE_HOST_TOKEN: "${VITE_HOST_TOKEN:?set VITE_HOST_TOKEN}"
+    image: houston/web:local
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
