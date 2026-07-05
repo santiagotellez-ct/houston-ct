@@ -31,7 +31,7 @@ ARG VITE_NEW_ENGINE_URL
 RUN pnpm --filter houston-web build
 
 # ---- Runtime stage ----
-FROM nginxinc/nginx-unprivileged:1.27-alpi
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY --from=builder /app/packages/web/nginx.dokploy.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/packages/web/dist /usr/share/nginx/html
 EXPOSE 8080
