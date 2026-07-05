@@ -15,15 +15,6 @@ services:
       - "4318"
     networks:
       - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.houston.rule=Host(`houston.TUDOMINIO.com`)"
-      - "traefik.http.routers.houston.entrypoints=websecure"
-      - "traefik.http.routers.houston.tls.certresolver=letsencrypt"
-      - "traefik.http.services.houston.loadbalancer.server.port=4318"
-      - "traefik.http.middlewares.houston-sse.buffering.maxResponseBodyBytes=0"
-      - "traefik.http.middlewares.houston-sse.buffering.maxRequestBodyBytes=0"
-      - "traefik.http.routers.houston.middlewares=houston-sse"
 
 networks:
   dokploy-network:
